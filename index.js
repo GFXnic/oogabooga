@@ -1,91 +1,115 @@
-import express from "express";
 import { getEmbedSu } from "./src/extractors/embedsu.js";
 import { getTwoEmbed } from "./src/extractors/2Embed.js";
 
-const port = 3001;
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
 
-const app = express()
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const searchParams = url.searchParams;
 
-app.get('/', (req, res) => {
-    res.status(200).json({
-        INTRO: "Welcome to the unofficial vidsrcPro provider",
-        ROUTES: {
-            movie: "/embedsu|2embed/:movieTMDBid",
-            show: "/embedsu|2embed/:showTMDBid?s=seasonNumber&e=episodeNumber",
-            all_movie: "/combined/:movieTMDBid",
-            all_show: "/combined/:showTMDBid?s=seasonNumber&e=episodeNumber"
-        },
-        AUTHOR: "This api is developed and created by Inside4ndroid Studios"
+  if (pathname === '/') {
+    return new Response(JSON.stringify({
+      INTRO: "Welcome to the unofficial vidsrcPro provider",
+      ROUTES: {
+        movie: "/embedsu|2embed/:movieTMDBid",
+        show: "/embedsu|2embed/:showTMDBid?s=seasonNumber&e=episodeNumber",
+        all_movie: "/combined/:movieTMDBid",
+        all_show: "/combined/:showTMDBid?s=seasonNumber&e=episodeNumber"
+      },
+      AUTHOR: "This api is developed and created by Inside4ndroid Studios"
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 200,
     });
-});
+  }
 
-app.get('/embedsu/:tmdbId', async (req, res) => {
-    const id = req.params.tmdbId;
-    const season = req.query.s;
-    const episode = req.query.e;
-
-    try {
-        if (season && episode) {
-            const vidsrcresponse = await getEmbedSu(id, season, episode);
-            res.status(200).json(vidsrcresponse);
-        } else {
-            const vidsrcresponse = await getEmbedSu(id);
-            res.status(200).json(vidsrcresponse);
-        }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'Failed to fetch data' });
-    }
-});
-
-app.get('/2embed/:tmdbId', async (req, res) => {
-    const id = req.params.tmdbId;
-    const season = req.query.s;
-    const episode = req.query.e;
+  if (pathname.startsWith('/embedsu/')) {
+    const tmdbId = pathname.split('/').pop();
+    const season = searchParams.get('s');
+    const episode = searchParams.get('e');
 
     try {
-        if (season && episode) {
-            const vidsrcresponse = await getTwoEmbed(id, season, episode);
-            res.status(200).json(vidsrcresponse);
-        } else {
-            const vidsrcresponse = await getTwoEmbed(id, 0, 0);
-            res.status(200).json(vidsrcresponse);
-        }
+      let vidsrcresponse;
+      if (season && episode) {
+        vidsrcresponse = await getEmbedSu(tmdbId, season, episode);
+      } else {
+        vidsrcresponse = await getEmbedSu(tmdbId);
+      }
+      return new Response(JSON.stringify(vidsrcresponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
     } catch (error) {
-        console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'Failed to fetch data' });
+      console.error('Error fetching data:', error);
+      return new Response(JSON.stringify({ error: 'Failed to fetch data' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500,
+      });
     }
-});
+  }
 
-app.get('/combined/:tmdbId', async (req, res) => {
-    const id = req.params.tmdbId;
-    const season = req.query.s;
-    const episode = req.query.e;
+  if (pathname.startsWith('/2embed/')) {
+    const tmdbId = pathname.split('/').pop();
+    const season = searchParams.get('s');
+    const episode = searchParams.get('e');
 
     try {
-        let embedSuResponse;
-        let twoEmbedResponse;
-
-        if (season && episode) {
-            embedSuResponse = await getEmbedSu(id, season, episode);
-            twoEmbedResponse = await getTwoEmbed(id, season, episode);
-        } else {
-            embedSuResponse = await getEmbedSu(id);
-            twoEmbedResponse = await getTwoEmbed(id, 0, 0);
-        }
-
-        const combinedResponse = {
-            embedsu: embedSuResponse,
-            twoembed: twoEmbedResponse,
-        };
-
-        res.status(200).json(combinedResponse);
+      let vidsrcresponse;
+      if (season && episode) {
+        vidsrcresponse = await getTwoEmbed(tmdbId, season, episode);
+      } else {
+        vidsrcresponse = await getTwoEmbed(tmdbId, 0, 0);
+      }
+      return new Response(JSON.stringify(vidsrcresponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
     } catch (error) {
-        console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'Failed to fetch data' });
+      console.error('Error fetching data:', error);
+      return new Response(JSON.stringify({ error: 'Failed to fetch data' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500,
+      });
     }
-});
+  }
 
-app.listen(port, () => {
-    console.log(`Api listening on port http://localhost:${port}`);
-});
+  if (pathname.startsWith('/combined/')) {
+    const tmdbId = pathname.split('/').pop();
+    const season = searchParams.get('s');
+    const episode = searchParams.get('e');
+
+    try {
+      let embedSuResponse;
+      let twoEmbedResponse;
+
+      if (season && episode) {
+        embedSuResponse = await getEmbedSu(tmdbId, season, episode);
+        twoEmbedResponse = await getTwoEmbed(tmdbId, season, episode);
+      } else {
+        embedSuResponse = await getEmbedSu(tmdbId);
+        twoEmbedResponse = await getTwoEmbed(tmdbId, 0, 0);
+      }
+
+      const combinedResponse = {
+        embedsu: embedSuResponse,
+        twoembed: twoEmbedResponse,
+      };
+
+      return new Response(JSON.stringify(combinedResponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      return new Response(JSON.stringify({ error: 'Failed to fetch data' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+  }
+
+  return new Response('Not Found', { status: 404 });
+}
